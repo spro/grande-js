@@ -1,0 +1,22 @@
+{
+  "name": "grande-js",
+  "version": "0.0.1",
+  "main": "lib/index.js",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "run": "node lib/index.js",
+    "test": "mocha -r ts-node/register test/*.ts",
+    "br": "npm run build && npm run run",
+    "bt": "npm run build && npm run test"
+  },
+  "dependencies": {
+    "@types/chai": "^4.2.14",
+    "@types/mocha": "^8.0.3",
+    "chai": "^4.2.0",
+    "mocha": "^8.2.1",
+    "pg": "^8.3.3",
+    "ts-node": "^9.0.0",
+    "typescript": "^4.0.5"
+  }
+}

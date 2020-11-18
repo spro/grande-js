@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "module": "es6",
+        "target": "esnext",
+        "sourceMap": true,
+        "module": "commonjs",
+        "experimentalDecorators": true,
+        "outDir": "./lib"
+    },
+    "include": [
+        "src/**/*"
+    ]
+}
