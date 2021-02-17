@@ -1,10 +1,11 @@
 import * as pg from 'pg'
-import {type_pg_map, FieldDefs, make_field_defs_str} from './fields'
+
+import {type_pg_map, FieldDefs, make_field_defs_sql} from './fields'
 import {Model} from './model'
 
 export function make_foreign_keys_str(fields: FieldDefs) {
     const foreign_keys_keys = ''
-    let foreign_keys_strs = []
+    let foreign_keys_strs: string[] = []
     const field_names = Object.entries(fields).map(([key, field_def]) => key)
     foreign_keys_strs.push(`primary key (${field_names.join(', ')})`)
     foreign_keys_strs = foreign_keys_strs.concat(Object.entries(fields).map(([key, field_def]) => {
@@ -23,7 +24,7 @@ export function make_foreign_keys_str(fields: FieldDefs) {
         return field_def_str
     }))
 
-    let foreign_keys_str = foreign_keys_strs.length ? foreign_keys_strs.join(', \n    ') : ''
+    let foreign_keys_str = foreign_keys_strs.length ? foreign_keys_strs.join(',\n    ') : ''
     return foreign_keys_str
 }
 
@@ -32,12 +33,11 @@ export function make_foreign_keys_str(fields: FieldDefs) {
 
 export class Relationship {
     // For super-class
-    static _conn: any
-    static _registered = {}
+    static _registered: {[key: string]: Relationship} = {}
 
     readonly kind = 'forward'
-    readonly singular
-    reverse: ReverseRelationship
+    readonly singular: boolean = false
+    reverse?: ReverseRelationship
 
     constructor(
         public from_model_name: string,
@@ -48,20 +48,20 @@ export class Relationship {
         Relationship._registered[relationship_name] = this
     }
 
-    async create_table(conn) {
+    create_table_sql(drop: boolean) {
         const from_model = Model._registered[this.from_model_name]
         const to_model = Model._registered[this.to_model_name]
         const table_name = `${from_model._table}_${this.relationship_name}`
         // console.log(`\n* Create relationship table ${table_name}`)
 
-        let relationship_fields = {}
+        let relationship_fields: {[key: string]: any} = {}
         const from_column = `from_${from_model._table}_id`
         const to_column = `to_${to_model._table}_id`
         relationship_fields[from_column] = {references_table: from_model._table, type: 'int'}
         relationship_fields[to_column] = {references_table: to_model._table, type: 'int'}
         const foreign_keys_str = make_foreign_keys_str(relationship_fields)
         relationship_fields['created_at'] = {type: 'timestamp', default: 'now()'}
-        const field_defs_str = make_field_defs_str(relationship_fields)
+        const field_defs_sql = make_field_defs_sql(relationship_fields)
 
         let unique_keys_str
         if (this.singular) { // To-one
@@ -72,26 +72,35 @@ export class Relationship {
             unique_keys_str = `unique (${from_column}, ${to_column})`
         }
 
-        const create_relationship_table_query = `
-drop table if exists ${table_name} cascade;
-create table ${table_name} (
-    ${field_defs_str},
+        let create_table_query = ''
+        if (drop) create_table_query = `drop table if exists ${table_name} cascade;\n`
+        create_table_query += `create table ${table_name} (
+    ${field_defs_sql},
     ${foreign_keys_str},
     ${unique_keys_str}
-)
+);
 `
-        // console.log('[create_relationship_table_query]', create_relationship_table_query)
+        return create_table_query
+    }
+
+    async create_table(conn: pg.PoolClient, drop: boolean = false) {
+        const from_model = Model._registered[this.from_model_name]
+        const to_model = Model._registered[this.to_model_name]
+        const table_name = `${from_model._table}_${this.relationship_name}`
+        // console.log(`\n* Create relationship table ${table_name}`)
+
+        const create_table_query = this.create_table_sql(drop)
 
         try {
-            await conn.query(create_relationship_table_query)
+            // console.log(`** Creating relationship table ${table_name}`)
+            await conn.query(create_table_query)
+            // console.log(`** Created relationship table ${table_name}`)
         } catch(err) {
             console.error(`[err] Error creating relationship table ${table_name}:`, err)
-        } finally {
-            // console.log(`** Created relationship table ${table_name}`)
         }
     }
 
-    get_details() {
+    get_details(): [any, any, string, string, string, boolean] {
         const from_class = Model._registered[this.from_model_name]
         const to_class = Model._registered[this.to_model_name]
 
@@ -117,8 +126,8 @@ export class ToOneRelationship extends Relationship {
 
 export class ReverseRelationship {
     readonly kind = 'reverse'
-    from_model_name: string
-    to_model_name: string
+    // from_model_name: string
+    // to_model_name: string
 
     constructor(
         public reverse_model_name: string,
@@ -129,11 +138,11 @@ export class ReverseRelationship {
 
     update_forward() {
         const forward_relationship = Relationship._registered[this.reverse_relationship_name]
-        if (!forward_relationship) { throw "DNOOO" }
+        if (!forward_relationship) { throw `Could not find forward relationship for reverse ${this.reverse_relationship_name}` }
         (forward_relationship as Relationship).reverse = this
     }
 
-    get_details() {
+    get_details(): [any, any, string, string, string, boolean] {
         const forward_relationship = Relationship._registered[this.reverse_relationship_name]
         const from_class = Model._registered[forward_relationship.from_model_name]
         const to_class = Model._registered[forward_relationship.to_model_name]

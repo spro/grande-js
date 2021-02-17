@@ -2,10 +2,14 @@
     "compilerOptions": {
         "module": "es6",
         "target": "esnext",
-        "sourceMap": true,
         "module": "commonjs",
         "experimentalDecorators": true,
-        "outDir": "./lib"
+        "outDir": "./lib",
+        "noImplicitAny": false,
+        "declaration": true,
+        "sourceMap": true,
+        "strict": true,
+        "strictPropertyInitialization": false
     },
     "include": [
         "src/**/*"
