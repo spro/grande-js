@@ -1,0 +1,1 @@
+{"version":3,"file":"create-sql.js","sourceRoot":"","sources":["../src/create-sql.ts"],"names":[],"mappings":";;AAAA,mCAA6B;AAE7B,KAAK,IAAI,SAAS,IAAI,aAAK,CAAC,WAAW,EAAE;IACrC,MAAM,KAAK,GAAG,aAAK,CAAC,WAAW,CAAC,SAAS,CAAC,CAAA;IAC1C,MAAM,KAAK,CAAC,kBAAkB,CAAC,KAAK,CAAC,CAAA;IACrC,MAAM,KAAK,CAAC,0BAA0B,EAAE,CAAA;CAC3C"}
