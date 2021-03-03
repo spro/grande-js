@@ -8,7 +8,8 @@ const connection_options = {
     database: 'cirrcle'
 }
 
-const sql = fs.readFileSync('test.sql').toString()
+const filename = process.argv[2]
+const sql = fs.readFileSync(filename).toString()
 
 async function main() {
     pool = new pg.Pool(connection_options)
@@ -18,12 +19,18 @@ async function main() {
 
     try {
         const result = await conn.query(sql)
-        console.log(result.rows)
+        if (result.rows) {
+            console.log(result.rows)
+        } else if (Array.isArray(result)) {
+            console.log(Object.keys(result[0]))
+            result.map(r => console.log(r.rows))
+        }
     } catch (err) {
         console.error('Error:', err.message)
     }
 
     await conn.release()
+    process.exit()
 }
 
 main()
