@@ -352,6 +352,9 @@ export class Model {
         if (options.limit) {
             select_query += ` limit ${options.limit}`
         }
+        if (options.offset) {
+            select_query += ` offset ${options.offset}`
+        }
         const result = await this_class._conn.query(select_query, [this.id])
 
         return <T[]>result.rows.map((row) => new related_class(row))
