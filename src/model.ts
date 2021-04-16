@@ -4,6 +4,8 @@ import {AnyDict, flatten, defined} from './helpers'
 import {FieldDefs, make_field_defs_sql} from './fields'
 import {Relationship, ReverseRelationship, AnyRelationship} from './relationship'
 
+const DEBUG = process.env.GRANDE_DEBUG || false
+
 // Supporting types & classes
 
 type Query = AnyDict
@@ -57,12 +59,12 @@ export class Model {
         const class_name = this.name
 
         const table_exists_query = `select exists (select table_name from information_schema.tables where table_name = '${table_name}');`
-        console.log('[table_exists_query]', table_exists_query)
+        if (DEBUG) console.log('[table_exists_query]', table_exists_query)
 
         try {
             const result = await this._conn.query(table_exists_query)
             const exists = result.rows[0].exists
-            console.log('[exists]', exists)
+            if (DEBUG) console.log('[exists]', exists)
             // return false
             return exists
         } catch(err) {
@@ -141,13 +143,16 @@ export class Model {
         const field_values = Object.values(defined_create_obj)
         const placeholders = field_names.map((_, i) => '$' + (i + 1))
         const insert_query = `insert into ${this._table} (${field_names.join(', ')}) values (${placeholders.join(', ')}) returning *`
+        if (DEBUG) console.log('[create query]', insert_query, field_values)
         const result = await this._conn.query(insert_query, field_values)
         const instance = new this(result.rows[0])
         return <T>instance
     }
 
     static async get<T extends Model>(id: number): Promise<T | null> {
-        const result = await this._conn.query(`select * from ${this._table} where id = $1`, [id])
+        const select_query = `select * from ${this._table} where id = $1`
+        if (DEBUG) console.log('[get query]', select_query, [id])
+        const result = await this._conn.query(select_query, [id])
         if (result.rows.length == 0) {
             return null
         } else {
@@ -169,7 +174,7 @@ export class Model {
         if (options.limit) {
             select_query += ` limit ${options.limit}`
         }
-        console.log('[select_query]', select_query)
+        if (DEBUG) console.log('[find query]', select_query)
         const result = await this._conn.query(select_query)
         return <T[]>result.rows.map(row => new this(row))
     }
@@ -186,6 +191,7 @@ export class Model {
         const set_fields = field_names.map((key, i) => `${key}=$${i + 1}`)
         set_fields.push('updated_at=now()') // Set last updated
         const update_query = `update ${this._table} set ${set_fields.join(', ')} where id=${id} returning *`
+        if (DEBUG) console.log('[update query]', update_query, field_values)
         const result = await this._conn.query(update_query, field_values)
         const instance = new this(result.rows[0])
         return <T>instance
@@ -199,6 +205,7 @@ export class Model {
     static async delete<T extends Model>(id: number): Promise<{success: boolean}> {
         const table_name = this._table
         const delete_query = `delete from ${table_name} where id=$1`
+        if (DEBUG) console.log('[delete query]', delete_query, [id])
         await this._conn.query(delete_query, [id])
         return {success: true}
     }
@@ -246,7 +253,7 @@ export class Model {
         }
 
         const insert_query = `insert into ${relationship_table} (${field_names.join(', ')}) values (${placeholders.join(', ')}) ${on_conflict || ''}`
-        // console.log('[insert_query]', insert_query)
+        if (DEBUG) console.log('[set_related query]', insert_query, field_values)
         const result = await this_class._conn.query(insert_query, field_values)
     }
 
@@ -271,6 +278,7 @@ export class Model {
         }
 
         const insert_query = `insert into ${relationship_table} (${field_names.join(', ')}) values ${placeholder_sets.join(', ')} returning *`
+        if (DEBUG) console.log('[add_related query]', insert_query, field_values)
         const result = await this_class._conn.query(insert_query, field_values)
         return result.rows
     }
@@ -292,6 +300,7 @@ export class Model {
         }
 
         const select_query = `select * from ${relationship_table} where ${this_column} = $1`
+        if (DEBUG) console.log('[get_relationship query]', select_query, [this.id])
         const result = await this_class._conn.query(select_query, [this.id])
 
         return result.rows[0]
@@ -355,6 +364,7 @@ export class Model {
         if (options.offset) {
             select_query += ` offset ${options.offset}`
         }
+        if (DEBUG) console.log('[find_related query]', select_query, [this.id])
         const result = await this_class._conn.query(select_query, [this.id])
 
         return <T[]>result.rows.map((row) => new related_class(row))
@@ -378,6 +388,7 @@ export class Model {
         }
 
         const delete_query = `delete from ${relationship_table} where ${this_column} = $1 and ${related_column} = $2`
+        if (DEBUG) console.log('[unset_related query]', delete_query, [this.id, item.id])
         await this_class._conn.query(delete_query, [this.id, item.id])
     }
 
@@ -407,6 +418,7 @@ export class Model {
         const placeholders = items.map((_, i) => '$' + (i + 2)) // $1 is this_column's ID value
 
         const delete_query = `delete from ${relationship_table} where ${this_column} = $1 and ${related_column} in (${placeholders.join(', ')})`
+        if (DEBUG) console.log('[remove_related query]', delete_query, [this.id].concat(item_ids))
         await this_class._conn.query(delete_query, [this.id].concat(item_ids))
     }
 
