@@ -45,7 +45,8 @@ export class Relationship {
         public relationship_name: string,
         public relationship_extra?: any
     ) {
-        Relationship._registered[relationship_name] = this
+        const relationship_key = from_model_name + '__' + relationship_name
+        Relationship._registered[relationship_key] = this
     }
 
     create_table_sql(drop: boolean) {
@@ -109,7 +110,8 @@ export class Relationship {
         const from_column = `from_${from_table}_id`
         const to_column = `to_${to_table}_id`
         const relationship_table = `${from_table}_${this.relationship_name}`
-        const this_class = Relationship._registered[this.relationship_name]
+        const relationship_key = this.from_model_name + '__' + this.relationship_name
+        const this_class = Relationship._registered[relationship_key]
         const singular = this_class.singular
 
         return [from_class, to_class, from_column, to_column, relationship_table, singular]
@@ -137,13 +139,15 @@ export class ReverseRelationship {
     }
 
     update_forward() {
-        const forward_relationship = Relationship._registered[this.reverse_relationship_name]
+        const relationship_key = this.reverse_model_name + '__' + this.reverse_relationship_name
+        const forward_relationship = Relationship._registered[relationship_key]
         if (!forward_relationship) { throw `Could not find forward relationship for reverse ${this.reverse_relationship_name}` }
         (forward_relationship as Relationship).reverse = this
     }
 
     get_details(): [any, any, string, string, string, boolean] {
-        const forward_relationship = Relationship._registered[this.reverse_relationship_name]
+        const relationship_key = this.reverse_model_name + '__' + this.reverse_relationship_name
+        const forward_relationship = Relationship._registered[relationship_key]
         const from_class = Model._registered[forward_relationship.from_model_name]
         const to_class = Model._registered[forward_relationship.to_model_name]
 
