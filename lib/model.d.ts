@@ -32,6 +32,7 @@ export declare class Model {
     static get<T extends Model>(id: number): Promise<T | null>;
     static find<T extends Model>(query: Query, options?: QueryOptions): Promise<T[]>;
     static find_one<T extends Model>(query: Query): Promise<T>;
+    static search<T extends Model>(field_names: string[], q: string, options?: QueryOptions): Promise<T[]>;
     static update<T extends Model>(id: number, update_obj: AnyDict): Promise<T>;
     update<T extends Model>(update_obj: AnyDict): Promise<T>;
     static delete<T extends Model>(id: number): Promise<{
