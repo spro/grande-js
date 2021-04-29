@@ -65,10 +65,12 @@ class Person extends Model {
     static _table = 'people'
 
     name: string
+    email: string
     age?: number
 
     static _fields = {
         name: new FieldDef('string', {optional: false, unique: true}),
+        email: new FieldDef('string'),
         age: new FieldDef('int')
     }
 
@@ -100,9 +102,9 @@ after(release)
 describe("Create items", function() {
 
     it("Creates a few people", async function() {
-        const created_p1 = await Person.create({name: 'Onedy', age: 11})
-        const created_p2 = await Person.create({name: 'Twooey', age: 22})
-        const created_p3 = await Person.create({name: 'Trey', age: 33})
+        const created_p1 = await Person.create({name: 'Onedy', email: '1dey@gmail.com', age: 11})
+        const created_p2 = await Person.create({name: 'Twooey', email: '2y@yahoo.net', age: 22})
+        const created_p3 = await Person.create({name: 'Trey', email: 'threeboi@gmail.com', age: 33})
 
         expect(created_p1).to.have.own.property('id')
         expect(created_p2.id).to.be.above(created_p1.id)
@@ -335,6 +337,20 @@ describe("To-one relationships", function() {
 
         const a2_avatar_of = await a2.get_related('avatar_of')
         expect(a2_avatar_of).to.deep.equal(p1)
+    })
+
+    it("Finds people by name", async function() {
+        const searched_ps: Person[] = await Person.search(['name'], 'ey')
+        const searched_ps_names = searched_ps.map((p) => p.name)
+        console.log('[searched_ps_names]', searched_ps_names)
+        expect(searched_ps_names).to.have.members(['Twooey', 'Trey'])
+    })
+
+    it("Finds people by name and email", async function() {
+        const searched_ps: Person[] = await Person.search(['name', 'email'], 'GMail')
+        const searched_ps_names = searched_ps.map((p) => p.name)
+        console.log('[searched_ps_names]', searched_ps_names)
+        expect(searched_ps_names).to.have.members(['Onedy', 'Trey'])
     })
 
 })
