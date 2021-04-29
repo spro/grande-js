@@ -12,6 +12,10 @@ type Query = AnyDict
 // TODO: More specifics
 type QueryOptions = AnyDict
 
+type SetOptions = {
+    replace?: boolean
+}
+
 // Main model class
 // -----------------------------------------------------------------------------
 
@@ -218,7 +222,7 @@ export class Model {
     // Relationship CRUD methods
     // -------------------------------------------------------------------------
 
-    async set_related<T extends Model>(relationship_name: string, item: T) {
+    async set_related<T extends Model>(relationship_name: string, item: T, options?: SetOptions) {
         const this_class = (this.constructor as typeof Model)
         const relationship_class = this_class._relationships[relationship_name]
         const [from_class, to_class, from_column, to_column, relationship_table, singular] = relationship_class.get_details()
@@ -244,12 +248,17 @@ export class Model {
 
         // Conflict resolution for constrained relationships
         // ---------------------------------------------------------------------
-        // For a forward to-one relationship, a conflict on the `from` key means this relationship has already been set. Instead of inserting a new row, the existing row should be updated to change the `to` key.
-        // A reverse to-one relationship is a forward one-to relationship. A conflict on the `to` key means the relationship has already been set and the `from` needs to be changed.
+        // If the `replace` option is set, we will update existing relationships when conflicts arise.
+        // For a forward to-one relationship, a conflict on the `from_` column means this relationship already exists. Instead of inserting a new row, the `to_` column of the existing row is updated.
+        // A reverse to-one relationship is a forward *one-to* relationship. A conflict on the `to_` column means the relationship exists and the `from_` needs to be changed.
 
         let on_conflict
-        if (singular) {
-            on_conflict = `on conflict (${this_column}) do update set ${related_column} = ${related_id}`
+        if (singular && options?.replace) {
+            if (relationship_class.kind == 'forward') {
+                on_conflict = `on conflict (${from_column}) do update set ${to_column} = ${item.id}`
+            } else if (relationship_class.kind == 'reverse') {
+                on_conflict = `on conflict (${to_column}) do update set ${from_column} = ${item.id}`
+            }
         }
 
         const insert_query = `insert into ${relationship_table} (${field_names.join(', ')}) values (${placeholders.join(', ')}) ${on_conflict || ''}`

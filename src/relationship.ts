@@ -3,6 +3,8 @@ import * as pg from 'pg'
 import {type_pg_map, FieldDefs, make_field_defs_sql} from './fields'
 import {Model} from './model'
 
+const DEBUG = process.env.GRANDE_DEBUG || false
+
 export function make_foreign_keys_str(fields: FieldDefs) {
     const foreign_keys_keys = ''
     let foreign_keys_strs: string[] = []
@@ -64,12 +66,23 @@ export class Relationship {
         relationship_fields['created_at'] = {type: 'timestamp', default: 'now()'}
         const field_defs_sql = make_field_defs_sql(relationship_fields)
 
+        // Define uniqueness constraints
         let unique_keys_str
-        if (this.singular) { // To-one
+
+        // To-one (singular - from ID is unique)
+        if (this.singular) {
             unique_keys_str = `unique (${from_column})`
-        } else if (this.reverse && this.reverse.singular) {
+            // One to one (both from and to IDs are unique)
+            if (this.reverse && this.reverse.singular) {
+                unique_keys_str += `, unique (${to_column})`
+            }
+        }
+        // One-to-many (reverse is singular - to ID is unique)
+        else if (this.reverse && this.reverse.singular) {
             unique_keys_str = `unique (${to_column})`
-        } else {
+        }
+        // Many-to-many (the pair of IDs is unique)
+        else {
             unique_keys_str = `unique (${from_column}, ${to_column})`
         }
 
