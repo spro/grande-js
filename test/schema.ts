@@ -1,5 +1,8 @@
 import 'mocha'
+import * as chai from 'chai'
 import {expect} from 'chai'
+import * as chaiAsPromised from 'chai-as-promised'
+chai.use(chaiAsPromised)
 
 import {
     Model, FieldDef,
@@ -46,15 +49,16 @@ class Animal extends Model {
 
     owner?: Person
     favorite_pet_of?: Person
+    avatar_of?: Person
 
     static _relationships = {
         owner: new ReverseRelationship('Person', 'pets', true),
-        favorite_pet_of: new ReverseRelationship('Person', 'favorite_pet')
+        favorite_pet_of: new ReverseRelationship('Person', 'favorite_pet'),
+        avatar_of: new ToOneRelationship('Animal', 'Person', 'avatar_of'),
+        best_friend: new ToOneRelationship('Animal', 'Animal', 'best_friend'),
+        best_friend_of: new ReverseRelationship('Animal', 'best_friend', true),
     }
 }
-
-console.log('[Animal]', Animal)
-console.log('[Animal.find]', Animal.find)
 
 @Model.register
 class Person extends Model {
@@ -70,6 +74,7 @@ class Person extends Model {
 
     pets?: Animal[]
     favorite_pet?: Animal
+    avatar?: Animal
     following?: Person[]
     followers?: Person[]
 
@@ -77,6 +82,7 @@ class Person extends Model {
         best_friend: new ToOneRelationship('Person', 'Person', 'best_friend'),
         pets: new ToManyRelationship('Person', 'Animal', 'pets'),
         favorite_pet: new ToOneRelationship('Person', 'Animal', 'favorite_pet'),
+        avatar: new ReverseRelationship('Animal', 'avatar_of', true),
         following: new ToOneRelationship('Person', 'Person', 'following'),
         followers: new ReverseRelationship('Person', 'following')
     }
@@ -138,7 +144,7 @@ describe("Update items", function() {
         const new_name = 'Powderpuff'
 
         const got_a1: Animal | null = await Animal.get(1)
-        const updated_a1: Animal | null = await Animal.update(1, <Animal>{name: new_name})
+        const updated_a1: Animal = await Animal.update(1, <Animal>{name: new_name})
 
         expect(got_a1?.name).to.not.equal(new_name)
         expect(updated_a1?.name).to.equal(new_name)
@@ -202,8 +208,12 @@ describe("To-many relationships", function() {
         expect(a1_owner).to.deep.equal(a3_owner)
     })
 
-    it("Changes a to-many relationship in reverse", async function() {
-        await a3.set_related('owner', p2)
+    it("Fails to set a reverse to-many relationship (many-to-one) without replace option", async function() {
+        expect(a3.set_related('owner', p2)).to.eventually.be.rejected
+    })
+
+    it("Sets a reverse to-many relationship (many-to-one) with replace option", async function() {
+        await a3.set_related('owner', p2, {replace: true})
         const a3_owner: Person = await a3.get_related('owner')
         expect(a3_owner.id).to.equal(2)
     })
@@ -259,8 +269,8 @@ describe("To-one relationships", function() {
 
     // Set p1 -> favorite_pet -> a2
 
-    it("Updates a forward to-one relationship", async function() {
-        await p1.set_related('favorite_pet', a2)
+    it("Updates a forward to-one relationship with replace option", async function() {
+        await p1.set_related('favorite_pet', a2, {replace: true})
         const p1_favorite_pet: Animal = await p1.get_related('favorite_pet')
         const a2_favorite_pet_of: Person[] = await a2.find_related('favorite_pet_of')
         const a1_favorite_pet_of: Person[] = await a1.find_related('favorite_pet_of')
@@ -301,6 +311,30 @@ describe("To-one relationships", function() {
 
         expect(a2_favorite_pet_of_before).to.have.deep.members([p2])
         expect(a2_favorite_pet_of_after).to.have.lengthOf(0)
+    })
+
+    // One-to-one (reverse is also singular)
+    // -----------------------------------------------------------------------------
+
+    // Set a1 -> avatar_of -> p1
+
+    // Set p2 <- avatar <- a2
+
+    it("Sets a singular reverse to-one relationship", async function() {
+        await p1.set_related('avatar', a2)
+        await p2.set_related('avatar', a1)
+
+        const p1_avatar = await p1.get_related('avatar')
+        expect(p1_avatar).to.deep.equal(a2)
+
+        const p2_avatar = await p2.get_related('avatar')
+        expect(p2_avatar).to.deep.equal(a1)
+
+        const a1_avatar_of = await a1.get_related('avatar_of')
+        expect(a1_avatar_of).to.deep.equal(p2)
+
+        const a2_avatar_of = await a2.get_related('avatar_of')
+        expect(a2_avatar_of).to.deep.equal(p1)
     })
 
 })
