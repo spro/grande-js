@@ -141,6 +141,8 @@ export class Model {
     // Static CRUD methoods
     // -------------------------------------------------------------------------
 
+    // Create
+
     static async create<T extends Model>(create_obj: AnyDict): Promise<T> {
         const defined_create_obj = defined(create_obj)
         const field_names = Object.keys(defined_create_obj)
@@ -153,6 +155,8 @@ export class Model {
         return <T>instance
     }
 
+    // Get (single item by ID)
+
     static async get<T extends Model>(id: number): Promise<T | null> {
         const select_query = `select * from ${this._table} where id = $1`
         if (DEBUG) console.log('[get query]', select_query, [id])
@@ -164,6 +168,8 @@ export class Model {
             return <T>instance
         }
     }
+
+    // Find (multiple items by exact attributes)
 
     static async find<T extends Model>(query: Query, options: QueryOptions = {}): Promise<T[]> {
         let where_clause = ""
@@ -178,15 +184,41 @@ export class Model {
         if (options.limit) {
             select_query += ` limit ${options.limit}`
         }
+        if (options.offset) {
+            select_query += ` offset ${options.offset}`
+        }
         if (DEBUG) console.log('[find query]', select_query)
         const result = await this._conn.query(select_query)
         return <T[]>result.rows.map(row => new this(row))
     }
 
+    // Find one (single item by exact attributes)
+
     static async find_one<T extends Model>(query: Query): Promise<T> {
         const all_results = await this.find(query, {limit: 1})
         return <T>all_results[0]
     }
+
+    // Search
+
+    static async search<T extends Model>(field_names: string[], q: string, options: QueryOptions = {}): Promise<T[]> {
+        const where_clauses = field_names.map((field_name) =>
+            `${field_name} ilike $1`
+        )
+        let select_query = `select * from ${this._table} where ${where_clauses.join(' OR ')}`
+        if (options.limit) {
+            select_query += ` limit ${options.limit}`
+        }
+        if (options.offset) {
+            select_query += ` offset ${options.offset}`
+        }
+        q = '%' + q + '%'
+        if (DEBUG) console.log('[search query]', select_query, [q])
+        const result = await this._conn.query(select_query, [q])
+        return <T[]>result.rows.map(row => new this(row))
+    }
+
+    // Update
 
     static async update<T extends Model>(id: number, update_obj: AnyDict): Promise<T> {
         const defined_update_obj = defined(update_obj)
@@ -205,6 +237,8 @@ export class Model {
         const this_class = (this.constructor as typeof Model)
         return this_class.update(this.id, update_obj)
     }
+
+    // Delete
 
     static async delete<T extends Model>(id: number): Promise<{success: boolean}> {
         const table_name = this._table
