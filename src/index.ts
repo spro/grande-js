@@ -34,20 +34,31 @@ export async function connect(connection_options: AnyDict = {}) {
     // Let reverse & forward relationships know about each other
     for (let model_key in Model._registered) {
         const model = Model._registered[model_key]
-        await model.ensure_relationships()
+        model.ensure_relationships()
     }
 
     return conn
 }
 
-export function create_sql(drop: boolean = false) {
+export async function create_sql(drop: boolean = false) {
+    // Ensure all relationships are set up
+    for (let model_key in Model._registered) {
+        const model = Model._registered[model_key]
+        model.ensure_relationships()
+    }
+
+    // Create model tables
     for (let model_key in Model._registered) {
         const model = Model._registered[model_key]
         const model_sql = model.create_table_sql(drop)
+        console.log(model_sql + '\n')
+    }
+
+    // Create relationship tables
+    for (let model_key in Model._registered) {
+        const model = Model._registered[model_key]
         const relationships_sql = model.create_relationship_tables_sql(drop)
-        console.log(model_sql)
-        if (relationships_sql.length) console.log('\n' + relationships_sql)
-        else console.log('')
+        if (relationships_sql.length) console.log(relationships_sql + '\n')
     }
 }
 

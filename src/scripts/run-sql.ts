@@ -4,15 +4,11 @@ import * as fs from 'fs'
 let pool: pg.Pool
 let conn: pg.PoolClient
 
-const connection_options = {
-    database: 'cirrcle'
-}
-
 const filename = process.argv[2]
 const sql = fs.readFileSync(filename).toString()
 
 async function main() {
-    pool = new pg.Pool(connection_options)
+    pool = new pg.Pool({})
     conn = await pool.connect()
 
     console.log('\n')

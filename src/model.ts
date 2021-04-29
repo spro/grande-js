@@ -106,7 +106,7 @@ export class Model {
         }
     }
 
-    static async ensure_relationships() {
+    static ensure_relationships() {
         Object.entries(this._relationships).map(([relationship_name, relationship_class]) => {
             if (relationship_class instanceof ReverseRelationship) {
                 relationship_class.update_forward()
