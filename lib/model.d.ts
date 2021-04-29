@@ -4,6 +4,9 @@ import { FieldDefs } from './fields';
 import { AnyRelationship } from './relationship';
 declare type Query = AnyDict;
 declare type QueryOptions = AnyDict;
+declare type SetOptions = {
+    replace?: boolean;
+};
 declare type ModelRef = typeof Model;
 export declare class Model {
     static _conn: pg.PoolClient;
@@ -22,7 +25,7 @@ export declare class Model {
     static table_exists(): Promise<boolean>;
     static create_table_sql(drop: boolean): string;
     static create_table(drop: boolean): Promise<void>;
-    static ensure_relationships(): Promise<void>;
+    static ensure_relationships(): void;
     static create_relationship_tables(): Promise<void>;
     static create_relationship_tables_sql(drop: boolean): string;
     static create<T extends Model>(create_obj: AnyDict): Promise<T>;
@@ -37,7 +40,7 @@ export declare class Model {
     delete<T extends Model>(): Promise<{
         success: boolean;
     }>;
-    set_related<T extends Model>(relationship_name: string, item: T): Promise<void>;
+    set_related<T extends Model>(relationship_name: string, item: T, options?: SetOptions): Promise<void>;
     add_related<T extends Model>(relationship_name: string, items: T[]): Promise<any[]>;
     get_relationship<T extends Model>(relationship_name: string): Promise<T | null>;
     get_related<T extends Model>(relationship_name: string): Promise<T | null>;

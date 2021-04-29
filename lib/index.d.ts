@@ -7,5 +7,5 @@ export { Model, FieldDef, Relationship, ToManyRelationship, ToOneRelationship, R
 declare let conn: pg.PoolClient;
 export { conn };
 export declare function connect(connection_options?: AnyDict): Promise<pg.PoolClient>;
-export declare function create_sql(drop?: boolean): void;
+export declare function create_sql(drop?: boolean): Promise<void>;
 export declare function release(): Promise<void>;
