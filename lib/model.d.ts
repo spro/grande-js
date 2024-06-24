@@ -2,14 +2,14 @@ import * as pg from 'pg';
 import { AnyDict } from './helpers';
 import { FieldDefs } from './fields';
 import { AnyRelationship } from './relationship';
-declare type Query = AnyDict;
-declare type QueryOptions = AnyDict;
-declare type SetOptions = {
+type Query = AnyDict;
+type QueryOptions = AnyDict;
+type SetOptions = {
     replace?: boolean;
 };
-declare type ModelRef = typeof Model;
+type ModelRef = typeof Model;
 export declare class Model {
-    static _conn: pg.PoolClient;
+    static _pool: pg.Pool;
     static _registered: {
         [key: string]: ModelRef;
     };

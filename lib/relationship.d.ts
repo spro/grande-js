@@ -14,7 +14,7 @@ export declare class Relationship {
     reverse?: ReverseRelationship;
     constructor(from_model_name: string, to_model_name: string, relationship_name: string, relationship_extra?: any);
     create_table_sql(drop: boolean): string;
-    create_table(conn: pg.PoolClient, drop?: boolean): Promise<void>;
+    create_table(pool: pg.Pool, drop?: boolean): Promise<void>;
     get_details(): [any, any, string, string, string, boolean];
 }
 export declare class ToManyRelationship extends Relationship {
@@ -32,4 +32,4 @@ export declare class ReverseRelationship {
     update_forward(): void;
     get_details(): [any, any, string, string, string, boolean];
 }
-export declare type AnyRelationship = ToManyRelationship | ToOneRelationship | ReverseRelationship;
+export type AnyRelationship = ToManyRelationship | ToOneRelationship | ReverseRelationship;

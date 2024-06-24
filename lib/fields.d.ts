@@ -12,7 +12,7 @@ export declare class FieldDef {
         [key: string]: any;
     });
 }
-export declare type FieldDefs = {
+export type FieldDefs = {
     [key: string]: FieldDef;
 };
 export declare function make_field_defs_sql(fields: FieldDefs): string;

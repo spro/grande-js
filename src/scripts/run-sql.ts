@@ -22,7 +22,7 @@ async function main() {
             result.map(r => console.log(r.rows))
         }
     } catch (err) {
-        console.error('Error:', err.message)
+        console.error('Error:', err)
     }
 
     await conn.release()
