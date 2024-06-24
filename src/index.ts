@@ -17,51 +17,53 @@ export {
     Relationship, ToManyRelationship, ToOneRelationship, ReverseRelationship
 }
 
+// Set up connections between all related models
+
+export async function ensure_relationships() {
+    for (let model_key in Model._registered) {
+        const model = Model._registered[model_key]
+        model.ensure_relationships()
+    }
+}
+
 // Connect & release
 // -------------------------------------------------------------------------
 
-let pool: pg.Pool
-let conn: pg.PoolClient
-
-export {conn}
+export let pool: pg.Pool
 
 export async function connect(connection_options: AnyDict = {}) {
     pool = new pg.Pool(connection_options)
-    conn = await pool.connect()
+    Model._pool = pool
 
-    Model._conn = conn
+    await ensure_relationships()
 
-    // Let reverse & forward relationships know about each other
-    for (let model_key in Model._registered) {
-        const model = Model._registered[model_key]
-        model.ensure_relationships()
-    }
-
-    return conn
+    return pool
 }
 
-export async function create_sql(drop: boolean = false) {
-    // Ensure all relationships are set up
-    for (let model_key in Model._registered) {
-        const model = Model._registered[model_key]
-        model.ensure_relationships()
-    }
+export async function generate_sql(drop: boolean = false): Promise<string> {
+    await ensure_relationships()
+    
+    let all_sql = "-- Models\n\n"
 
     // Create model tables
     for (let model_key in Model._registered) {
         const model = Model._registered[model_key]
         const model_sql = model.create_table_sql(drop)
-        console.log(model_sql + '\n')
+        all_sql += model_sql + '\n'
     }
+    
+    all_sql += '\n-- Relationships\n\n'
 
     // Create relationship tables
     for (let model_key in Model._registered) {
         const model = Model._registered[model_key]
         const relationships_sql = model.create_relationship_tables_sql(drop)
-        if (relationships_sql.length) console.log(relationships_sql + '\n')
+        if (relationships_sql.length) all_sql += relationships_sql + '\n'
     }
+
+    return all_sql
 }
 
-export async function release() {
-    await conn.release()
+export async function end() {
+    await pool.end()
 }

@@ -7,7 +7,9 @@ chai.use(chaiAsPromised)
 import {
     Model, FieldDef,
     Relationship, ToOneRelationship, ToManyRelationship, ReverseRelationship,
-    connect, release
+    connect, end,
+    generate_sql,
+    pool
 } from '../src/'
 
 // Models (ideal definition)
@@ -94,10 +96,18 @@ class Person extends Model {
 // -----------------------------------------------------------------------------
 
 before(connect.bind(null, {drop: true}))
-after(release)
+after(end)
 
 // Main test methods
 // -----------------------------------------------------------------------------
+
+describe("Generate SQL", function () {
+    it("Generates SQL", async function () {
+        const setup_sql = await generate_sql(true);
+        console.log("[setup_sql]", setup_sql)
+        await pool.query(setup_sql);
+    });
+});
 
 describe("Create items", function() {
 
@@ -342,14 +352,12 @@ describe("To-one relationships", function() {
     it("Finds people by name", async function() {
         const searched_ps: Person[] = await Person.search(['name'], 'ey')
         const searched_ps_names = searched_ps.map((p) => p.name)
-        console.log('[searched_ps_names]', searched_ps_names)
         expect(searched_ps_names).to.have.members(['Twooey', 'Trey'])
     })
 
     it("Finds people by name and email", async function() {
         const searched_ps: Person[] = await Person.search(['name', 'email'], 'GMail')
         const searched_ps_names = searched_ps.map((p) => p.name)
-        console.log('[searched_ps_names]', searched_ps_names)
         expect(searched_ps_names).to.have.members(['Onedy', 'Trey'])
     })
 

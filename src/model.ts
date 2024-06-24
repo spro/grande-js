@@ -25,7 +25,7 @@ const default_fields = ['id', 'created_at', 'updated_at']
 
 export class Model {
     // For Model super-class
-    static _conn: pg.PoolClient
+    static _pool: pg.Pool
     static _registered: {[key: string]: ModelRef} = {}
 
     // Per Model sub-class
@@ -66,7 +66,7 @@ export class Model {
         if (DEBUG) console.log('[table_exists_query]', table_exists_query)
 
         try {
-            const result = await this._conn.query(table_exists_query)
+            const result = await this._pool.query(table_exists_query)
             const exists = result.rows[0].exists
             if (DEBUG) console.log('[exists]', exists)
             // return false
@@ -103,7 +103,7 @@ export class Model {
 
         try {
             // console.log(`\n* Creating table ${table_name} for ${class_name}`)
-            await this._conn.query(create_table_query)
+            await this._pool.query(create_table_query)
             // console.log(`** Created table ${table_name} for type ${class_name}`)
         } catch(err) {
             console.error(`[err] Error creating table ${table_name} for ${class_name}:`, err)
@@ -121,7 +121,7 @@ export class Model {
     static async create_relationship_tables() {
         const create_promises = Object.entries(this._relationships).map(async ([relationship_name, relationship_class]) => {
             if (relationship_class instanceof Relationship) {
-                await relationship_class.create_table(this._conn)
+                await relationship_class.create_table(this._pool)
             }
         })
         await Promise.all(create_promises)
@@ -150,7 +150,7 @@ export class Model {
         const placeholders = field_names.map((_, i) => '$' + (i + 1))
         const insert_query = `insert into ${this._table} (${field_names.join(', ')}) values (${placeholders.join(', ')}) returning *`
         if (DEBUG) console.log('[create query]', insert_query, field_values)
-        const result = await this._conn.query(insert_query, field_values)
+        const result = await this._pool.query(insert_query, field_values)
         const instance = new this(result.rows[0])
         return <T>instance
     }
@@ -160,7 +160,7 @@ export class Model {
     static async get<T extends Model>(id: number): Promise<T | null> {
         const select_query = `select * from ${this._table} where id = $1`
         if (DEBUG) console.log('[get query]', select_query, [id])
-        const result = await this._conn.query(select_query, [id])
+        const result = await this._pool.query(select_query, [id])
         if (result.rows.length == 0) {
             return null
         } else {
@@ -188,7 +188,7 @@ export class Model {
             select_query += ` offset ${options.offset}`
         }
         if (DEBUG) console.log('[find query]', select_query)
-        const result = await this._conn.query(select_query)
+        const result = await this._pool.query(select_query)
         return <T[]>result.rows.map(row => new this(row))
     }
 
@@ -214,7 +214,7 @@ export class Model {
         }
         q = '%' + q + '%'
         if (DEBUG) console.log('[search query]', select_query, [q])
-        const result = await this._conn.query(select_query, [q])
+        const result = await this._pool.query(select_query, [q])
         return <T[]>result.rows.map(row => new this(row))
     }
 
@@ -228,7 +228,7 @@ export class Model {
         set_fields.push('updated_at=now()') // Set last updated
         const update_query = `update ${this._table} set ${set_fields.join(', ')} where id=${id} returning *`
         if (DEBUG) console.log('[update query]', update_query, field_values)
-        const result = await this._conn.query(update_query, field_values)
+        const result = await this._pool.query(update_query, field_values)
         const instance = new this(result.rows[0])
         return <T>instance
     }
@@ -244,7 +244,7 @@ export class Model {
         const table_name = this._table
         const delete_query = `delete from ${table_name} where id=$1`
         if (DEBUG) console.log('[delete query]', delete_query, [id])
-        await this._conn.query(delete_query, [id])
+        await this._pool.query(delete_query, [id])
         return {success: true}
     }
 
@@ -297,7 +297,7 @@ export class Model {
 
         const insert_query = `insert into ${relationship_table} (${field_names.join(', ')}) values (${placeholders.join(', ')}) ${on_conflict || ''}`
         if (DEBUG) console.log('[set_related query]', insert_query, field_values)
-        const result = await this_class._conn.query(insert_query, field_values)
+        const result = await this_class._pool.query(insert_query, field_values)
     }
 
     async add_related<T extends Model>(relationship_name: string, items: T[]) {
@@ -322,7 +322,7 @@ export class Model {
 
         const insert_query = `insert into ${relationship_table} (${field_names.join(', ')}) values ${placeholder_sets.join(', ')} returning *`
         if (DEBUG) console.log('[add_related query]', insert_query, field_values)
-        const result = await this_class._conn.query(insert_query, field_values)
+        const result = await this_class._pool.query(insert_query, field_values)
         return result.rows
     }
 
@@ -344,7 +344,7 @@ export class Model {
 
         const select_query = `select * from ${relationship_table} where ${this_column} = $1`
         if (DEBUG) console.log('[get_relationship query]', select_query, [this.id])
-        const result = await this_class._conn.query(select_query, [this.id])
+        const result = await this_class._pool.query(select_query, [this.id])
 
         return result.rows[0]
     }
@@ -408,7 +408,7 @@ export class Model {
             select_query += ` offset ${options.offset}`
         }
         if (DEBUG) console.log('[find_related query]', select_query, [this.id])
-        const result = await this_class._conn.query(select_query, [this.id])
+        const result = await this_class._pool.query(select_query, [this.id])
 
         return <T[]>result.rows.map((row) => new related_class(row))
     }
@@ -432,7 +432,7 @@ export class Model {
 
         const delete_query = `delete from ${relationship_table} where ${this_column} = $1 and ${related_column} = $2`
         if (DEBUG) console.log('[unset_related query]', delete_query, [this.id, item.id])
-        await this_class._conn.query(delete_query, [this.id, item.id])
+        await this_class._pool.query(delete_query, [this.id, item.id])
     }
 
     async remove_related<T extends Model>(relationship_name: string, items: T[]) {
@@ -462,7 +462,7 @@ export class Model {
 
         const delete_query = `delete from ${relationship_table} where ${this_column} = $1 and ${related_column} in (${placeholders.join(', ')})`
         if (DEBUG) console.log('[remove_related query]', delete_query, [this.id].concat(item_ids))
-        await this_class._conn.query(delete_query, [this.id].concat(item_ids))
+        await this_class._pool.query(delete_query, [this.id].concat(item_ids))
     }
 
     // GraphQL methods

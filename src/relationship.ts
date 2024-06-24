@@ -97,7 +97,7 @@ export class Relationship {
         return create_table_query
     }
 
-    async create_table(conn: pg.PoolClient, drop: boolean = false) {
+    async create_table(pool: pg.Pool, drop: boolean = false) {
         const from_model = Model._registered[this.from_model_name]
         const to_model = Model._registered[this.to_model_name]
         const table_name = `${from_model._table}_${this.relationship_name}`
@@ -107,7 +107,7 @@ export class Relationship {
 
         try {
             // console.log(`** Creating relationship table ${table_name}`)
-            await conn.query(create_table_query)
+            await pool.query(create_table_query)
             // console.log(`** Created relationship table ${table_name}`)
         } catch(err) {
             console.error(`[err] Error creating relationship table ${table_name}:`, err)
